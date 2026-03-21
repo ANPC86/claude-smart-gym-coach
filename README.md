@@ -24,7 +24,7 @@ A Claude Project configuration for using Claude as an AI fitness coach with the 
 | `fitness-notion-workflow.md` | Rules for when/what Claude writes to Notion. |
 | `Gym_Tracker_skeleton.json` | Starter tracker with 10 sample exercises. Expand as you train. |
 
-> **Not included:** The full 1,041-exercise library cache (`library_cache_slim.json`). This is derived from the your gym app's own data and is not redistributable here. See the section below on how to build or obtain it.
+> **Not included:** The full exercise library cache (`library_cache_slim.json`). This is derived from the your gym app's own data and is not redistributable here. See the section below on how to build or obtain it.
 
 ---
 
