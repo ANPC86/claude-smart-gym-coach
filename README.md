@@ -8,7 +8,7 @@ A Claude Project configuration for using Claude as an AI fitness coach with the 
 
 - **Designs workouts** tailored to your muscle readiness, physical constraints, and training goals — then writes them to a Notion page you can read on your phone/tablet during the session
 - **Reviews completed sessions** by parsing the smart gym export JSON — identifies PRs, technique limiters, new exercise discoveries, and muscle readiness for next session
-- **Tracks all 1,041 exercises** in the smart gym library across sessions via a JSON tracker file — enabling systematic discovery of the full library
+- **Tracks all exercises** in the smart gym library across sessions via a JSON tracker file — enabling systematic discovery of the full library
 - **Maintains coaching continuity** via carry-forward flags between sessions (technique holds, deferred exercises, preference notes)
 
 ---
@@ -67,7 +67,7 @@ After your session: export the training record from the your gym app → upload 
 
 ## The Library Cache
 
-The smart gym has 1,041 exercises. Claude needs a local cache of this library to:
+The smart gym has a large exercise library. Claude needs a local cache of this library to:
 - Validate exercise IDs before generating workouts
 - Look up muscle groups, accessories, difficulty, and positions
 - Identify discovery candidates (exercises not yet in your tracker)
@@ -161,7 +161,7 @@ Mode 1 = concentric only | Mode 3 = eccentric (resistance on both concentric and
 
 - **Physical constraints matter** — fill them in accurately. The skill applies them every session (wrist cues, knee modifications, load adjustments for standing movements).
 - **The carry-forward system is the coaching memory** — after each session review, Claude writes flags to Notion that the next workout design reads before doing anything else.
-- **Discovery is a long game** — 1,041 exercises, 1–2 new ones per session. At 5 sessions/week that's roughly a year to see everything.
+- **Discovery is a long game** — the library is large, with 1–2 new exercises per session. At 5 sessions/week that's roughly a year to see everything.
 - **Re-upload the tracker after reviews** — Claude provides an updated tracker file after each session review. Drop it back into your Claude Project to keep the history current.
 
 ---
