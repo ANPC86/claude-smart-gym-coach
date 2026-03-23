@@ -8,6 +8,7 @@ description: >
   for general fitness Q&A — only on explicit workout design requests. Governs all aspects
   of smart gym workout generation: intake, JSON schema, exercise ordering, mode selection,
   discovery tracking, safety rules, and weight rationale.
+last_updated: 2026-03-23
 ---
 
 # smart cable gym — Workout Design Skill
@@ -15,71 +16,103 @@ description: >
 ## Step 0: Fetch Carry-Forward Flags (run BEFORE intake)
 
 **Always fetch the Current Workout Notes page before starting intake.**
-Page ID: `YOUR_CURRENT_WORKOUT_NOTES_PAGE_ID`
+Page ID: `YOUR_WORKOUT_NOTES_PAGE_ID`
 
-Look for a `## 🚩 Carry-Forward Flags` section at the top of the page. If present:
+Look for a `## 🚩 Carry-Forward Flags` section. If present:
 - Read every flag and treat it as a **hard constraint** for this session design
-- Surface each flag explicitly in the Session Overview section of the walkthrough
-- Examples of flags: hold weight on exercise X, watch bilateral balance on Y, unlock Z to higher weight, add exercise type W to session
+- Surface each flag explicitly in the Session Overview section
+- Examples: hold weight on X, watch bilateral balance on Y, add exercise type Z
 
-If the section is absent or empty: proceed normally — no carry-forward constraints.
+If absent or empty: proceed normally — no carry-forward constraints.
 
-**Do not skip this step.** This is the mechanism that connects the session review's "Next Session Focus" to the actual workout design. Without it, coaching continuity is lost.
+**Do not skip this step.** This is the mechanism that connects session review to workout design.
 
 ---
 
 ## Step 1: Intake (run BEFORE generating any JSON)
 
-Use `ask_user_input` to collect session parameters. Present all questions in a single call.
+Use `ask_user_input` to collect session parameters in a single call.
 
-### Intake Questions
-
-**Q1 — Time Available** (single_select)
-- 30 minutes
-- 45 minutes
-- 60 minutes
-- 75+ minutes
-
-**Q2 — Session Goal** (multi_select)
-- Discovery (new exercises priority)
-- Strength Building (load progression)
-- Gym Challenge (volume/kcal)
-- Recovery / Light Day
-
-**Q3 — Cardio Preference** (single_select)
-- Rowing (default)
-- Skiing
-- Vita (calorie target)
-- Skip cardio today
-
-**Q4 — Any notes?** (open text — ask as prose, not a widget)
-e.g. "right shoulder tender", "skip legs today", "focus upper body"
-
-### Muscle Readiness (auto-derive, no intake question needed)
-- Read `Gym_Tracker_Master_CURRENT.json` and query Training Journal in Notion for recent sessions
-- Flag any muscle group trained in the last 24h as FATIGUED, last 48h as RECOVERING
-- State derived readiness in the walkthrough preamble
-- If user notes an override ("legs feel fine", "shoulder still sore") → honor it
+**Q1 — Time Available** (single_select): 30 min | 45 min | 60 min | 75+ min
+**Q2 — Session Goal** (multi_select): Discovery | Strength Building | Gym Challenge | Recovery / Light Day
+**Q3 — Cardio Preference** (single_select): Rowing | Skiing | Vita | Skip
+**Q4 — Any notes?** (open text) — e.g. "right shoulder tender", "skip legs today"
 
 ---
 
-## Step 2: Validate Inputs Against Library
+## Step 2: Derive Muscle Readiness from Notion
 
-Before building the workout:
-1. Search `library_cache_slim.json` for all exercises to be included
-2. Confirm every `id` matches `actionLibraryGroupId` exactly — never invent IDs
-3. Select discovery exercises (zero `times_seen_in_records` in tracker) matching target muscle groups and positions for today's session
-4. If an ID cannot be validated → find a valid replacement or omit
+Query the Training Journal to determine which muscle groups are fresh vs fatigued.
+
+```
+Tool: Notion:notion-search
+query: "training session"
+data_source_url: "YOUR_TRAINING_JOURNAL_DATA_SOURCE"
+page_size: 5
+```
+
+Fetch the last 3–5 sessions (sort by most recent). Check `Focus` property for muscle groups trained.
+
+| Status | Criteria |
+|--------|---------|
+| 🔴 FATIGUED | Trained in last 24h |
+| 🟡 RECOVERING | Trained 24–48h ago |
+| 🟢 READY | > 48h rest |
+
+State derived readiness in walkthrough preamble. Honor any user overrides from intake notes.
+
+---
+
+## Step 3: Select Exercises
+
+### A) Known exercises — look up weight and scores in Notion Exercise Library
+
+For any exercise you plan to include with progressive load (strength goal), query its history:
+
+```
+Tool: Notion:notion-search
+query: "[exercise title]"
+data_source_url: "YOUR_EXERCISE_LIBRARY_DATA_SOURCE"
+page_size: 3
+```
+
+Then `notion-fetch` the matched page to get: `Last Weight`, `Last Amp`, `Last Force`, `Last Bal`.
+
+Use these for weight selection (rationale code A) and progression gate checks.
+
+**AMP Score Special Cases — do not apply as progression gate:**
+
+Some exercises have a structural ROM ceiling where AMP will never reach 4–5 regardless of technique. Identify these through repeated sessions where AMP stays capped. Use FCS-only gating for load progression on these.
+
+| Exercise | AMP Rule |
+|----------|----------|
+| Seated Tricep Rope Cross-Body Crunch | AMP = mobility indicator only. Use FCS to gate load. AMP reflects forward flexion ROM ceiling, not technique. |
+| [Add exercises here as you identify them] | AMP = mobility indicator only; FCS gates load |
+
+### B) Discovery candidates — find undiscovered exercises
+
+Discovery candidates come from `library_cache_slim.json` — exercises where the corresponding Library ID has `Discovered = false` (or is absent) in the Notion Exercise Library.
+
+**Efficient approach:**
+1. From `library_cache_slim.json`, generate candidate IDs matching today's target muscle groups and positions
+2. For each candidate title, spot-check Notion with a quick search to confirm not yet discovered
+3. Prioritize candidates that:
+   - Match today's target muscle groups
+   - Have positions compatible with the session's position flow (non-increasing 10→0)
+   - Are not stretch/Pilates (dataStatType 4, 5, tabId 18, 20)
 
 **Discovery filtering rules for `library_cache_slim.json`:**
 - Exclude Pilates (tabId 18, 20)
 - Exclude stretch-only (dataStatType 4, 5) from discovery pool
 - Cardio exercises (category 6) use `id` field; strength exercises use `actionLibraryGroupId`
-- Always cast IDs to `str()` for matching — tracker stores them as strings
+- Cast all IDs to `str()` for matching
+
+### C) Validate every ID
+Confirm every `id` in the workout JSON matches `actionLibraryGroupId` in `library_cache_slim.json` exactly. Never invent IDs.
 
 ---
 
-## Step 3: Build the Workout
+## Step 4: Build the Workout
 
 ### Session Sizing by Time
 | Time | Total Exercises |
@@ -93,28 +126,31 @@ Before building the workout:
 
 | Phase | Content |
 |-------|---------|
-| **1 — Setup** | Neck Stretch — rotate variants each session. Do not hardcode a single ID. |
-| **2 — Cardio** | Per intake Q3. Row/Ski: reps=480, mode=1. Vita: kcal_target=85, level=3–5, mode=1. Never mix types. |
-| **3 — Mobility** | 4–5 dynamic moves (scale down to 3 for 30-min sessions) |
-| **4 — Strength** | Per session goal. Sorted strictly position → accessory. |
-| **5 — Decompression** | Supine Spinal Stretch + Butterfly Stretch (use IDs from your library) |
+| **1 — Setup** | Neck Stretch — rotate variants each session |
+| **2 — Cardio** | Row/Ski: reps=480, mode=1. Vita: kcal_target=85, level=3–5, mode=1 |
+| **3 — Mobility** | 4–5 dynamic moves (3 for 30-min) |
+| **4 — Strength** | Position-ordered, non-increasing (10→0) |
+| **5 — Decompression** | Supine Spinal Stretch + Butterfly Stretch |
 
-### Mandatory Every Session (regardless of goal)
-Define your own mandatory exercises based on your training goals. Common examples:
-1. **A core rotation movement** (e.g. Woodchop variant) — Phase 3 or 4, 2–3 sets. Rotate through unseen variants to maximize discovery.
-2. **A core stability movement** (e.g. Anti-rotation press, Crunch variation) — Phase 4, final strength exercise.
-3. **A vertical pull variant** (e.g. Lat Pulldown, Straight-Arm Pulldown) — Phase 4, 2–3 sets. Rotate unseen variants; fall back to a known anchor.
-4. **A push/twist mobility exercise** — Phase 3, every session.
+### Mandatory Every Session
+Define your own mandatory exercises based on your training goals. Structure mandatories around **movement patterns** to ensure consistent coverage while rotating through the library. Common patterns:
 
-> **Tip:** Set your mandatories based on movement patterns you want to consistently build, not just individual exercises. This ensures you rotate through the library while still hitting foundational patterns each session.
+1. **A core rotation movement** (e.g. Woodchop variant) — Phase 3 or 4, 2 sets. Rotate unseen variants to maximize discovery.
+2. **A core stability movement** (e.g. Crunch variation, Anti-rotation press) — Phase 4, final strength exercise.
+3. **A vertical pull variant** (e.g. Lat Pulldown) — Phase 4, 2–3 sets. Rotate unseen variants.
+4. **A push/twist mobility exercise** — Phase 3 or 4, every session.
+5. **A hip flexor mobility exercise** — Phase 3, every session.
+6. **Kneeling exercises caution** — not a mandatory, but a constraint: if the user has quad flexibility limits, kneeling positions structurally suppress AMP scores. Do not over-load; use FCS-only gating.
+
+> **Tip:** For each mandatory pattern, maintain a priority list of unseen variants. Once all variants are discovered, fall back to your preferred anchor exercise.
 
 ### Goal Modifiers
 | Goal | Adjustments |
 |------|------------|
-| **Discovery** | Minimum 3–4 new exercises. Spread across muscle groups. Mode 1. |
-| **Strength Building** | 8–10 compound/accessory exercises. 3 sets. Mode 3 sets 2+3. Progress weight only if scores ≥3 (≥4 compound). |
-| **Gym Challenge** | Bias toward high-rep, higher-kcal exercises. Include Vita if cardio slot. Track kcal in walkthrough. |
-| **Recovery / Light Day** | Mode 1 only. Reduce sets to 1–2. Drop weight 20–30% vs last session. Prioritize mobility and bodyweight. |
+| **Discovery** | Min 3–4 new exercises. Mode 1. Spread across muscle groups. |
+| **Strength Building** | 8–10 exercises. 3 sets. Mode 3 for sets 2+3. Progress only if scores ≥3 (≥4 compounds). |
+| **Gym Challenge** | High-rep, higher-kcal bias. Vita if cardio slot. Confirm whether an active challenge is running before applying. |
+| **Recovery / Light Day** | Mode 1 only. 1–2 sets. Weight –20–30%. Mobility/bodyweight priority. |
 
 ---
 
@@ -138,24 +174,21 @@ Define your own mandatory exercises based on your training goals. Common example
 No weight. No mode.
 
 ### VITA (dataStatType 6)
-Titles: Vita High Pull, Vita Row-Tation, Vita Row, Vita Slam, Vita Lunge, Vita Pull, Vita Twist
 ```json
 { "kcal_target": 85, "level": 5, "mode": 1, "rest": 30 }
 ```
-No reps. No weight. Mode always 1. Level 3–5 for beginner. Max 1 set. ⚠️ level not applied on machine — include anyway.
+No reps. No weight. Mode always 1. Level 3–5. Max 1 set.
 
-### Pilates / Pilates-Mat (tabId 18, 20) — NOT SUPPORTED. Omit entirely.
+### Pilates (tabId 18, 20) — NOT SUPPORTED. Omit.
 
 ---
 
 ## Modes
 | Mode | Use |
 |------|-----|
-| **1** | Warm-ups, cooldowns, ALL discovery exercises, Row, Ski, Vita, Recovery day |
+| **1** | Warm-ups, cooldowns, ALL discovery exercises, Row, Ski, Vita, Recovery |
 | **2** | Chains — only if explicitly requested |
 | **3** | MANDATORY for strength sets 2 & 3 |
-
-No Mode 6 exists. Never use it.
 
 ---
 
@@ -163,14 +196,14 @@ No Mode 6 exists. Never use it.
 
 **Primary:** position 10 → 9 → 8 → … → 0. Never backtrack.
 
-**Secondary within same position — minimize accessory swaps:**
+**Secondary (minimize accessory swaps):**
 - Pos 10: Barbell(4) → Belt(10) → no accessory
 - Pos 9: Bench(1,9) → Handles(5) → Ankle Straps(3)
 - Pos 0: Tricep Rope(2) → Handles(5)
 
-**Rest buffers:** 30–60s position change | 60s accessory change | 2–3 min large changes
+**Rest buffers:** 30–60s position change | 60s accessory swap | 2–3 min large changes
 
-**FINAL CHECK:** scan entire exercise list for position backtracking before outputting.
+**FINAL CHECK:** scan entire list for position backtracking before output.
 
 ---
 
@@ -179,58 +212,58 @@ No Mode 6 exists. Never use it.
 1=Flat Bench | 2=Tricep Rope | 3=Ankle Straps | 4=Barbell Bar
 5=Handles | 7=Skiing Handles | 8=Rowing Bench | 9=Adjustable Bench | 10=Weightlifting Belt
 ```
-`library["accessories"]` is comma-separated — parse to sorted list for grouping.
 
 ---
 
 ## Weight Selection
-- **A) History exists** → last successful weight ± adjustment for technique scores + readiness
-- **B) Related pattern** → conservative carry-over from similar movement
-- **C) No history** → library `recommendedWeight`, adjusted down for standing/unilateral
 
-State rationale (A/B/C) for every exercise in walkthrough.
+- **A) Notion Exercise Library history exists** → fetch `Last Weight` ± adjustment for scores + readiness
+- **B) Related movement** → conservative carry-over from similar pattern
+- **C) No history** → `library_cache_slim` `recommendedWeight`, adjusted down for standing/unilateral
 
-**Progression gate:** scores ≥3 required to increase load. Prefer ≥4 for compounds (squat, deadlift, press, row).
+State rationale code (A/B/C) for every exercise. Smart gym accepts integer weights only — round down.
 
-**Important:** smart gym accepts integer weights only — always round down, never use decimals.
+**Progression gate:** AMP ≥3 AND FCS ≥3 to increase load. Compounds require ≥4.
+See AMP special cases in Step 3A — some exercises use FCS-only gating.
 
 ---
 
 ## Discovery Exercise Rules
-- Zero `times_seen_in_records` in tracker = eligible
+- `Discovered = false` (or absent from Notion Exercise Library) = eligible
 - Spread across muscle groups, categories, positions
 - Mode 1 always
-- Start at library `recommendedWeight`, adjust down for standing/unilateral
+- Weight: library `recommendedWeight`, adjusted down for standing/unilateral
 - Flag in walkthrough: **⭐ [DISCOVERY]** + muscle target + setup notes
 
 ---
 
 ## User Physical Constraints (customize for your user)
 Replace these with your own constraints — these are examples:
-- Forearm tightness / wrist sensitivity → relaxed grip, neutral wrist cues on all pulling exercises
-- Limited knee flexion → box squat modification; avoid deep-knee-flexion exercises unless explicitly cleared
+- Forearm tightness / wrist sensitivity → relaxed grip, neutral wrist on all pulling exercises
+- Limited knee flexion → box squat modification; avoid deep knee flexion
+- Kneeling exercises — if quad flexibility is a known limiter, AMP scores may be structurally suppressed; don't over-load kneeling positions based on AMP alone
 - Lighter load on standing handle-bar pulls and standing movements
 - Prefer floor exercises; supine cooldown with neck wedge
 
-**Strength References:** Fill in from user profile (Squat / Row / Bench / OHP working weights in lbs)
+**Strength References (lbs):** Squat [YOUR_SQUAT] | Row [YOUR_ROW] | Bench [YOUR_BENCH] | OHP [YOUR_OHP]
 
 ---
 
 ## Safety Rules
-- Pain target 0/10. Cap 2/10. If pain rises or form breaks → reduce load/ROM immediately.
+- Pain 0/10 target, cap 2/10. Rising pain or form breakdown → reduce load/ROM immediately.
 - Never invent IDs. Unvalidated ID → omit or replace.
 
 ---
 
 ## Workout Naming
 Format: `<Level> <Tag>-<Focus> DAY x/y v#`
-- Tags: STR=Strength | DISC=Discovery | CHAL=Challenge | REC=Recovery | FB=Full Body | UB=Upper | LB=Lower
+Tags: STR | DISC | CHAL | REC | FB | UB | LB
 
 ---
 
 ## Output Format
 
-**FIRST:** one fenced `json` block. Nothing before it.
+**FIRST:** one fenced `json` block.
 **AFTER:** walkthrough in JSON order.
 
 ### JSON Schema
@@ -247,35 +280,47 @@ Format: `<Level> <Tag>-<Focus> DAY x/y v#`
 ```
 
 ### Walkthrough sections
-1. **Session Overview** — date, goal, time budget, muscle readiness summary (derived + any overrides)
-2. **Phase-by-phase breakdown** — for each phase: position grouping, accessory swap logic, setup notes
-3. **Per-exercise notes** — weight rationale (A/B/C), ⭐ [DISCOVERY] flags, technique cues, scaling rules
-4. **Discovery count update** — X new exercises today | Y total seen | Z remaining of 1,041
+1. **Session Overview** — date, goal, time budget, carry-forward flags, muscle readiness
+2. **Phase-by-phase** — position grouping, accessory logic, setup notes
+3. **Per-exercise** — weight rationale (A/B/C), ⭐ discovery flags, technique cues, scaling
+4. **Discovery count** — X new exercises today | Y total | Z remaining of [library total]
+5. `💬 **Your notes:**` prompt on every strength and cardio exercise
 
-### Walkthrough formatting conventions
-- ⭐ Discovery exercise
-- ★ Mandatory exercise
-- 📈 Progression (weight increase)
-- ⏸ Hold (maintain weight, refine technique)
-- ⚠️ Technique flag
-- `💬 **Your notes:**` prompt on every strength and cardio exercise (leave blank for user to fill in mid-session)
-- Weight rationale codes (A/B/C) on each exercise
+### Walkthrough icons
+- ⭐ Discovery | ★ Mandatory | 📈 Progression | ⏸ Hold | ⚠️ Technique flag
+
+---
+
+## Notion Writes After Workout Design
+
+**1. Write full walkthrough to Current Workout Notes** (`YOUR_WORKOUT_NOTES_PAGE_ID`):
+- `replace_content` — full page rewrite
+- Include all 5 phases, per-exercise cues, `💬 **Your notes:**` prompts (blank for user)
+- Do NOT modify the `🚩 Carry-Forward Flags` section — read-only during design
+
+**2. Update Fitness Coach landing page** (`YOUR_LANDING_PAGE_ID`):
+- `update_content` — replace Current Session block with new date/workout name
+
+**3. Create Training Journal entry** (`YOUR_TRAINING_JOURNAL_DATA_SOURCE`):
+- Status: PLANNED, session name, date, focus, estimated duration
 
 ---
 
 ## Pre-Response Checklist
-- [ ] **Step 0 complete** — Current Workout Notes fetched; carry-forward flags read and applied (or confirmed absent)
-- [ ] Carry-forward flags listed in Session Overview (if any)
+- [ ] Step 0 complete — Carry-forward flags read and applied (or confirmed absent)
+- [ ] Carry-forward flags listed in Session Overview
 - [ ] Intake complete (time, goal, cardio, notes)
-- [ ] Muscle readiness derived and stated
-- [ ] Every `id` validated against library
+- [ ] Muscle readiness derived from Notion Training Journal
+- [ ] Known exercise weights fetched from Notion Exercise Library
+- [ ] Every `id` validated against `library_cache_slim.json`
 - [ ] No position backtracking
 - [ ] Phase 1–5 structure present
 - [ ] Vita: kcal_target, mode=1, no weight, level set
 - [ ] Row/Ski: mode=1, not mode=6
 - [ ] Goal modifiers applied
-- [ ] Mandatory exercises present
+- [ ] Mandatory exercises present (core rotation, core stability, vertical pull, push/twist, hip flexor)
 - [ ] Physical constraints applied
 - [ ] Weight rationale (A/B/C) for every exercise
 - [ ] All weights are integers (rounded down)
 - [ ] Discovery count updated in walkthrough
+- [ ] Notion writes queued (Current Workout Notes, landing page, Training Journal)

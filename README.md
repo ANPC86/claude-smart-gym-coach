@@ -8,7 +8,7 @@ A Claude Project configuration for using Claude as an AI fitness coach with the 
 
 - **Designs workouts** tailored to your muscle readiness, physical constraints, and training goals — then writes them to a Notion page you can read on your phone/tablet during the session
 - **Reviews completed sessions** by parsing the smart gym export JSON — identifies PRs, technique limiters, new exercise discoveries, and muscle readiness for next session
-- **Tracks all exercises** in the smart gym library across sessions via a JSON tracker file — enabling systematic discovery of the full library
+- **Tracks the full exercise library** across sessions via a JSON tracker file — enabling systematic discovery of every available exercise
 - **Maintains coaching continuity** via carry-forward flags between sessions (technique holds, deferred exercises, preference notes)
 
 ---
@@ -24,7 +24,7 @@ A Claude Project configuration for using Claude as an AI fitness coach with the 
 | `fitness-notion-workflow.md` | Rules for when/what Claude writes to Notion. |
 | `Gym_Tracker_skeleton.json` | Starter tracker with 10 sample exercises. Expand as you train. |
 
-> **Not included:** The full exercise library cache (`library_cache_slim.json`). This is derived from the your gym app's own data and is not redistributable here. See the section below on how to build or obtain it.
+> **Not included:** The full exercise library cache (`library_cache_slim.json`). This is derived from your gym app's own data and is not redistributable here. See the section below on how to build or obtain it.
 
 ---
 
@@ -67,7 +67,7 @@ After your session: export the training record from the your gym app → upload 
 
 ## The Library Cache
 
-The smart gym has a large exercise library. Claude needs a local cache of this library to:
+The smart gym has a large exercise library. Claude needs a local cache of it to:
 - Validate exercise IDs before generating workouts
 - Look up muscle groups, accessories, difficulty, and positions
 - Identify discovery candidates (exercises not yet in your tracker)
@@ -161,14 +161,53 @@ Mode 1 = concentric only | Mode 3 = eccentric (resistance on both concentric and
 
 - **Physical constraints matter** — fill them in accurately. The skill applies them every session (wrist cues, knee modifications, load adjustments for standing movements).
 - **The carry-forward system is the coaching memory** — after each session review, Claude writes flags to Notion that the next workout design reads before doing anything else.
-- **Discovery is a long game** — the library is large, with 1–2 new exercises per session. At 5 sessions/week that's roughly a year to see everything.
+- **Discovery is a long game** — the library is large, and you'll typically encounter 1–2 new exercises per session. Systematic discovery takes time.
 - **Re-upload the tracker after reviews** — Claude provides an updated tracker file after each session review. Drop it back into your Claude Project to keep the history current.
 
 ---
 
 ## Related Projects
 
-- Check GitHub for community workout manager projects specific to your machine
+- [UnofficialSpeedianceWorkoutManager](https://github.com/hbui3/UnofficialSpeedianceWorkoutManager) — community-built workout manager for the same machine, useful for workout imports and library exploration
+
+---
+
+## Changelog
+
+### 2026-03-23
+**Notion Exercise Library replaces tracker JSON as source of truth**
+
+The biggest architectural change in this update: exercise history (last weight, scores, discovered status) now lives in a Notion database instead of the flat `Gym_Tracker_Master_CURRENT.json` file. The tracker JSON is retired.
+
+**Session Review skill (`smart-gym-session-review-SKILL.md`)**
+- New Step 2: look up each exercise in the Notion Exercise Library before writing the review (replaces tracker JSON cross-reference)
+- Step 8 rewritten: full Notion write-back pattern — update known exercises, create new discoveries, batch where possible
+- Step 9 added: update Carry-Forward Flags and create Training Journal entry after review
+- Added `Times Seen` field tracking — increment on each known exercise update, set to 1 on new discovery
+- Added AMP Score Special Cases table — documents exercises where AMP is a structural mobility indicator only, not a load gate (first documented example: Seated Tricep Rope Cross-Body Crunch)
+- Clarified BBS=0 on unilateral exercises is a device data artifact, not a bilateral balance flag
+- Added kneeling exercise note to Physical Context: quad flexibility limits can structurally suppress AMP scores
+
+**Workout Design skill (`smart-gym-workout-design-SKILL.md`)**
+- New Step 2: derive muscle readiness from Notion Training Journal (replaces tracker JSON lookup)
+- New Step 3: select exercises with Notion Exercise Library lookup for known exercises + AMP special cases
+- Added matching AMP Special Cases table for design-time reference
+- Hip flexor mobility exercise added as mandatory every session
+- Added kneeling exercise caution to Physical Constraints
+- Gym Challenge modifier now includes a note to confirm whether a challenge is currently active
+- Notion Writes section added at end — walkthrough to Current Workout Notes, landing page update, Training Journal entry
+
+**Notion reference (`notion-reference.md`)**
+- Exercise Library database section added (was missing from template)
+- `Times Seen` field added to Exercise Library schema — with increment rule and null-handling note
+- Exercise Playbook schema table added
+- Explicit callout that the flat tracker JSON is retired
+- `[EXCLUDE]` convention documented for excluded exercises
+
+**Notion workflow (`fitness-notion-workflow.md`)**
+- Exercise Library write-back added as Step 1 of the post-review workflow (was missing)
+- "What Lives in Notion" section added — makes the data home for each type explicit
+- Removed stale reference to exercise master data living in JSON files
 
 ---
 
