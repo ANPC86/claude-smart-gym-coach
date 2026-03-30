@@ -1,6 +1,6 @@
 # Fitness Coach — Notion Workspace Reference
 > **Template version** — replace all page/database IDs with your own before use.
-> **Last updated**: 2026-03-23
+> **Last updated**: 2026-03-30
 > If Claude's memory conflicts with this file, prefer whichever has the more recent date.
 
 Use this reference when creating, updating, or querying Notion. The connector is available in all conversations — just call the Notion tools directly once connected.
@@ -168,6 +168,7 @@ Content:
 | Last Force | Number | Last forceControlScore (1–5) |
 | Last Bal | Number | Last bilateralBalanceScore (1–5); null for unilateral alternating sets |
 | Times Seen | Number | Count of session records containing this exercise; increment by 1 on each session update, set to 1 on first discovery. If null when fetched, treat as 0 before incrementing. |
+| Recommended Stretches | Rich text | Pre-exercise mobility work for this movement; format: stretch name · technique note · Library ID(s) · duration cue. Populated from session experience; see `/prompts/recommended-stretches-bulk-populate.md` for bulk pre-population. |
 | Notes | Text | Coach notes, technique flags, weight anchors, exclusion flags |
 
 #### Finding an exercise by title
@@ -234,6 +235,21 @@ Properties:
 ```
 
 > **Note**: Batch via `notion-create-pages` (up to 100 per call) when creating multiple new discoveries from the same session.
+
+#### Adding or updating Recommended Stretches
+
+```
+Tool: Notion:notion-update-page
+command: update_properties
+page_id: [exercise page ID]
+properties:
+  Recommended Stretches: "Stretch Name · technique note (e.g. hold cable/frame for support) · Library ID: 123456789 · 30s/side"
+```
+
+> Use semicolons to separate multiple stretches in one field.
+> Populate opportunistically from session experience; for bulk pre-population see `/prompts/recommended-stretches-bulk-populate.md`.
+
+---
 
 #### Excluded exercises (do not update, do not include in workout design)
 Maintain your own list of excluded exercises with reasons:

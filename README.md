@@ -174,6 +174,23 @@ Mode 1 = concentric only | Mode 3 = eccentric (resistance on both concentric and
 
 ## Changelog
 
+### 2026-03-30
+**Added `Recommended Stretches` field to Exercise Library schema**
+
+Pre-exercise mobility work was previously buried as unstructured text in the Notes field — invisible to the coaching workflow and not queryable by muscle group or movement pattern.
+
+- New field: `Recommended Stretches` (Rich text) in the Notion Exercise Library database
+- Format: `stretch name · technique note · Library ID(s) · duration cue`; multiple stretches separated by semicolons
+- Populated opportunistically during session reviews when a specific stretch connection is identified from training experience
+- For bulk pre-population across the library, see the new prompt file: [`/prompts/recommended-stretches-bulk-populate.md`](prompts/recommended-stretches-bulk-populate.md)
+- Field is RICH_TEXT for now; a future migration to a Relation column (pointing to a dedicated Stretches table) is noted as a future improvement once a backend pipeline is in place
+
+**`notion-reference.md`**
+- `Recommended Stretches` added to Exercise Library schema table
+- New tool call example: "Adding or updating Recommended Stretches"
+
+---
+
 ### 2026-03-23
 **Notion Exercise Library replaces tracker JSON as source of truth**
 
