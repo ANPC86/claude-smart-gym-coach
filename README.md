@@ -4,12 +4,137 @@ A Claude Project configuration for using Claude as an AI fitness coach with the 
 
 ---
 
+## Plain-English Overview
+
+This system is organized around one top-level dashboard with four main operating databases, a live carry-forward notes page, and a coaching reference layer.
+
+At the top is **Fitness Coach**, which acts as the hub. It shows the current training context, links to the core databases, and serves as the main entry point into the system.
+
+The system is structured like this:
+
+- **strategy:** goals
+- **state:** body metrics
+- **execution:** current workout notes
+- **history:** training journal
+- **knowledge:** exercise playbook
+
+---
+
+## System Breakdown
+
+### 1. Command Center / Dashboard
+The **Fitness Coach** page is the command center.
+
+It gives a high-level snapshot of:
+- current phase
+- training context
+- body snapshot
+- strength references
+- physical considerations
+- links to the rest of the system
+
+This is the main "where am I right now?" page.
+
+### 2. Live Session Handoff
+**Current Workout Notes** is the live operational page.
+
+It holds:
+- carry-forward flags
+- next-session instructions
+- exercise caps and holds
+- exclusions
+- mandatory movements
+- session-planning notes
+
+This is the short-horizon coaching layer: the page that tells the next session what matters most.
+
+### 3. Training History
+**Training Journal** is the session archive.
+
+It tracks workout-level history such as:
+- session date
+- duration
+- focus
+- recovery rating
+- PRs
+- notes
+- coach review summary
+
+This is the historical record of what was done and how it went.
+
+### 4. Exercise Knowledge
+**Exercise Playbook** is the exercise reference system.
+
+It stores:
+- coaching cues
+- common mistakes
+- preferred setup notes
+- load notes
+- personal observations
+- status and tags
+- **undiscovered exercises** — a dynamic list to guide systematic library discovery
+
+This is the knowledge base for how each exercise works for the user, as well as your discovery frontier.
+
+### 5. Goals
+**Fitness Goals** is the strategy layer.
+
+It captures:
+- what the goal is
+- priority
+- status
+- current state
+- target
+- target date
+- approach
+
+This is the long-range direction for the system.
+
+### 6. Body Metrics
+**Body Metrics** is the state-tracking layer.
+
+It tracks:
+- body weight
+- body fat
+- resting heart rate
+- energy level
+- sleep quality
+- phase
+- notes
+
+This is the physical status and trend view.
+
+### 7. Coaching / Reference Layer
+A separate reference layer supports the system itself.
+
+This includes things like:
+- coaching rules
+- workflow notes
+- system references
+- changelog or operating notes
+
+This is the meta-layer that explains how the system should be interpreted and used.
+
+---
+
+## Benefits of This Setup
+
+- Clear separation between strategy, state, execution, history, and knowledge
+- Easy to understand what is current versus what is archival
+- Session planning can use live carry-forward notes without cluttering long-term records
+- Exercise-specific lessons are preserved in one place instead of being lost inside session logs
+- Goals stay visible without being mixed into daily workout details
+- The system can grow over time without losing structure
+- Undiscovered exercises are tracked in one place, making systematic discovery actionable instead of random
+
+---
+
 ## What This Does
 
-- **Designs workouts** tailored to your muscle readiness, physical constraints, and training goals — then writes them to a Notion page you can read on your phone/tablet during the session
-- **Reviews completed sessions** by parsing the smart gym export JSON — identifies PRs, technique limiters, new exercise discoveries, and muscle readiness for next session
-- **Tracks the full exercise library** across sessions via a JSON tracker file — enabling systematic discovery of every available exercise
-- **Maintains coaching continuity** via carry-forward flags between sessions (technique holds, deferred exercises, preference notes)
+- **Designs workouts** tailored to your muscle readiness, physical constraints, and training goals — then writes them to a Notion page you can read on your phone or tablet during the session
+- **Reviews completed sessions** by parsing the smart gym export JSON — identifies PRs, technique limiters, new exercise discoveries, and muscle readiness for the next session
+- **Maintains coaching continuity** via carry-forward flags between sessions, including technique holds, deferred exercises, and preference notes
+- **Uses Notion as the source of truth** for session history, exercise notes, goals, and live workout guidance
 
 ---
 
@@ -21,24 +146,21 @@ A Claude Project configuration for using Claude as an AI fitness coach with the 
 | `smart-gym-workout-design-SKILL.md` | Skill file for workout design. Paste into your project as a file upload. |
 | `smart-gym-session-review-SKILL.md` | Skill file for post-session review. Paste into your project as a file upload. |
 | `notion-reference.md` | Notion database IDs and tool call patterns. Fill in your own IDs. |
-| `fitness-notion-workflow.md` | Rules for when/what Claude writes to Notion. |
-| `Gym_Tracker_skeleton.json` | Starter tracker with 10 sample exercises. Expand as you train. |
-
-> **Not included:** The full exercise library cache (`library_cache_slim.json`). This is derived from your gym app's own data and is not redistributable here. See the section below on how to build or obtain it.
+| `fitness-notion-workflow.md` | Rules for when and what Claude writes to Notion. |
 
 ---
 
 ## Setup Overview
 
 ### 1. Create a Claude Project
-In Claude.ai → create a new Project → name it something like "Fitness Coach".
+In Claude.ai, create a new Project and name it something like **Fitness Coach**.
 
 ### 2. Set the System Prompt
 Copy `PROJECT_INSTRUCTIONS_template.md` into the Project Instructions field. Fill in:
-- Your biometrics (weight, height, body fat %, resting HR)
-- Your working weights (Squat / Row / Bench / OHP)
-- Your physical constraints (injuries, mobility limits, preferences)
-- Your training frequency
+- your biometrics (weight, height, body fat %, resting HR)
+- your working weights (Squat / Row / Bench / OHP)
+- your physical constraints (injuries, mobility limits, preferences)
+- your training frequency
 
 ### 3. Upload Project Files
 Upload the following to your Claude Project's file storage:
@@ -46,75 +168,30 @@ Upload the following to your Claude Project's file storage:
 - `smart-gym-session-review-SKILL.md`
 - `notion-reference.md` (after filling in your Notion IDs)
 - `fitness-notion-workflow.md`
-- `Gym_Tracker_skeleton.json` (or your own tracker if you have one)
-- Your `library_cache_slim.json` (see below)
 
-### 4. Set Up Notion (optional but recommended)
+### 4. Set Up Notion
 Create the following in Notion:
-- A **Fitness Coach landing page** (dashboard)
-- A **Current Workout Notes page** (session walkthrough — opened on device during workout)
-- A **Training Journal database** (session log)
-- An **Exercise Playbook database** (per-exercise notes and coaching cues)
+- a **Fitness Coach landing page** (dashboard)
+- a **Current Workout Notes page** (session walkthrough — opened on device during workout)
+- a **Training Journal database** (session log)
+- an **Exercise Playbook database** (per-exercise notes, coaching cues, and undiscovered exercises list)
+- a **Fitness Goals database** (strategy and direction)
+- a **Body Metrics database** (physical state and trends)
 
-Connect the **Notion MCP** in Claude → Settings → Integrations. Then add your page/database IDs to `notion-reference.md`.
+Connect the **Notion MCP** in Claude, then add your page and database IDs to `notion-reference.md`.
 
 ### 5. Start Training
-Ask Claude: `"design a workout for today"` → answer the intake questions → Claude outputs importable JSON + a full coaching walkthrough.
+Ask Claude: `design a workout for today`
 
-After your session: export the training record from the your gym app → upload to Claude → Claude reviews scores, flags PRs, updates the tracker.
+Claude can generate:
+- importable workout JSON
+- a full coaching walkthrough
+- a Notion-ready session page or notes structure
 
----
-
-## The Library Cache
-
-The smart gym has a large exercise library. Claude needs a local cache of it to:
-- Validate exercise IDs before generating workouts
-- Look up muscle groups, accessories, difficulty, and positions
-- Identify discovery candidates (exercises not yet in your tracker)
-
-**This file is not included** in this repo as it's derived from the manufacturer's proprietary data.
-
-Options:
-- Use the your gym app API or export tools to pull the exercise library
-- Check if your gym's manufacturer provides an API or export tools — some community projects exist for specific machines
-- Build your own by querying the app's local data
-
-The expected schema for each entry in `library_cache_slim.json`:
-```json
-{
-  "id": 12345,
-  "actionLibraryGroupId": 12345,
-  "title": "Exercise Name",
-  "mainMuscleGroupName": "Chest",
-  "auxiliaryMuscleGroupList": ["Triceps", "Shoulders"],
-  "accessories": "1,5",
-  "outPosition": 9,
-  "category_id": 1,
-  "tabId": 1,
-  "recommendedWeight": 20,
-  "dataStatType": 1,
-  "completionMethod": 1,
-  "isUseDevice": 1
-}
-```
-
----
-
-## The Tracker File
-
-`Gym_Tracker_Master_CURRENT.json` is a flat JSON array where each entry represents one exercise and accumulates session data over time. It lives in your Claude Project and is updated after each session review.
-
-Key fields:
-- `actionLibraryGroupId` — string ID matching the library (always stored as string for consistent matching)
-- `times_seen_in_records` — how many times you've done this exercise (0 = undiscovered)
-- `last_maxWeight` — peak weight achieved in most recent session
-- `last_amplitudeStableScore` / `last_forceControlScore` — technique scores 1–5, gates load progression
-- `last_bilateralBalanceScore` — left/right balance 1–5, useful for catching asymmetries
-- `notes` — running log of session-by-session data in plain text
-
-The skeleton file in this repo has 10 sample entries. As you train, Claude appends entries and you re-upload the updated file.
-
----
+After your session:
+- export the training record from the smart gym app
+- upload it to Claude
+- Claude reviews scores, flags PRs, and updates the Notion-based coaching memory
 
 ## Score Interpretation
 
@@ -135,7 +212,7 @@ The smart gym generates four technique scores per exercise set (1–5 scale):
 
 ## Workout Import Format
 
-Claude generates workouts as JSON that can be imported into the your gym app (via the Gym Workout Manager or directly):
+Claude generates workouts as JSON that can be imported into the smart gym app:
 
 ```json
 {
@@ -153,16 +230,17 @@ Claude generates workouts as JSON that can be imported into the your gym app (vi
 }
 ```
 
-Mode 1 = concentric only | Mode 3 = eccentric (resistance on both concentric and eccentric phases)
+Mode 1 = concentric only  
+Mode 3 = eccentric (resistance on both concentric and eccentric phases)
 
 ---
 
 ## Tips
 
-- **Physical constraints matter** — fill them in accurately. The skill applies them every session (wrist cues, knee modifications, load adjustments for standing movements).
-- **The carry-forward system is the coaching memory** — after each session review, Claude writes flags to Notion that the next workout design reads before doing anything else.
-- **Discovery is a long game** — the library is large, and you'll typically encounter 1–2 new exercises per session. Systematic discovery takes time.
-- **Re-upload the tracker after reviews** — Claude provides an updated tracker file after each session review. Drop it back into your Claude Project to keep the history current.
+- **Physical constraints matter** — fill them in accurately. The skill applies them every session.
+- **The carry-forward system is the coaching memory** — after each session review, Claude writes flags that the next workout design reads before doing anything else.
+- **Discovery is a long game** — the library is large, and systematic discovery takes time. Use the undiscovered exercises list in your Exercise Playbook to guide what to try next.
+- **Notion is the operating layer** — keep the dashboard, current notes page, and databases clean so the coaching system stays usable.
 
 ---
 
