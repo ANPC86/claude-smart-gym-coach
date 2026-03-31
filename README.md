@@ -247,6 +247,7 @@ Mode 3 = eccentric (resistance on both concentric and eccentric phases)
 ## Related Projects
 
 - [UnofficialSpeedianceWorkoutManager](https://github.com/hbui3/UnofficialSpeedianceWorkoutManager) — community-built workout manager for the same machine, useful for workout imports and library exploration
+- [SmartGymWorkoutManager](https://github.com/ANPC86/SmartGymWorkoutManager) — personal fork of the original project by hbui3. This fork exists solely for personal use and testing of additional fixes and features. All credit for the original work goes to hbui3.
 
 ---
 
